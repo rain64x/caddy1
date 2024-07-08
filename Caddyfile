@@ -1,0 +1,49 @@
+:80 {
+    root * /usr/share/caddy
+    file_server
+}
+
+###################### Internal only ######################
+{
+    @allowedIPs remote_ip 192.168.0.0/16 203.0.113.255
+}
+
+(handle_internal) {
+    handle @allowedIPs {
+        reverse_proxy {args.0}
+    }
+    handle {
+        respond "Forbidden" 403
+    }
+}
+
+internal.service1.com {
+    import handle_internal localhost:9992
+}
+
+internal.service2.com {
+    import handle_internal localhost:9993
+}
+############################################################
+
+
+################## PHP ####################################
+(php_site) {
+    root * /var/www/{args.0}
+    encode gzip
+    php_fastcgi unix//run/php/php{args.1}-fpm.sock
+    file_server
+}
+
+publicsite.com {
+    import php_site site1 8.0
+}
+
+mail.publicsite.com {
+    import php_site mailservice 8.2
+}
+###########################################################
+
+blog.publicsite.com {
+    reverse_proxy localhost:9991
+}
